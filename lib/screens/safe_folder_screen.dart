@@ -1,10 +1,8 @@
 
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:provider/provider.dart';
 import 'dart:io';
 import 'package:path/path.dart' as p;
-import '../providers/file_provider.dart';
 import '../models/file_entity.dart';
 
 class SafeFolderScreen extends StatefulWidget {
@@ -17,8 +15,6 @@ class SafeFolderScreen extends StatefulWidget {
 class _SafeFolderScreenState extends State<SafeFolderScreen> {
   bool _isAuthenticated = false;
   bool _isSettingUp = false;
-  String _pin = '';
-  final String _confirmPin = '';
   List<FileEntity> _safeFiles = [];
   bool _isLoading = true;
 
@@ -29,53 +25,86 @@ class _SafeFolderScreenState extends State<SafeFolderScreen> {
   }
 
   Future<void> _checkSetup() async {
-    final prefs = await SharedPreferences.getInstance();
-    final storedPin = prefs.getString('safe_folder_pin');
-    
-    if (storedPin == null) {
-      setState(() {
-        _isSettingUp = true;
-        _isLoading = false;
-      });
-    } else {
-      setState(() {
-        _isSettingUp = false;
-        _isLoading = false;
-      });
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final storedPin = prefs.getString('safe_folder_pin');
+
+      if (mounted) {
+        if (storedPin == null) {
+          setState(() {
+            _isSettingUp = true;
+            _isLoading = false;
+          });
+        } else {
+          setState(() {
+            _isSettingUp = false;
+            _isLoading = false;
+          });
+        }
+      }
+    } catch (e) {
+      debugPrint('Error checking safe folder setup: $e');
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          // Fallback to setup mode or show error?
+          // If prefs fail, we can't really secure it properly.
+          // But showing error state is better than crash.
+          _isSettingUp = true; 
+        });
+      }
     }
   }
 
   Future<void> _setPin(String pin) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('safe_folder_pin', pin);
-    setState(() {
-      _isSettingUp = false;
-      _isAuthenticated = true;
-    });
-    _loadSafeFiles();
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('safe_folder_pin', pin);
+      if (mounted) {
+        setState(() {
+          _isSettingUp = false;
+          _isAuthenticated = true;
+        });
+        _loadSafeFiles();
+      }
+    } catch (e) {
+      debugPrint('Error setting PIN: $e');
+      if (mounted) {
+         ScaffoldMessenger.of(context).showSnackBar(
+           const SnackBar(content: Text('Failed to set PIN')),
+         );
+      }
+    }
   }
 
-  void _verifyPin(String pin) async {
-    final prefs = await SharedPreferences.getInstance();
-    final storedPin = prefs.getString('safe_folder_pin');
-    
-    if (pin == storedPin) {
-      setState(() {
-        _isAuthenticated = true;
-      });
-      _loadSafeFiles();
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Incorrect PIN')),
-      );
-      setState(() {
-        _pin = '';
-      });
+  Future<void> _verifyPin(String pin) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final storedPin = prefs.getString('safe_folder_pin');
+      
+      if (!mounted) return;
+
+      if (pin == storedPin) {
+        setState(() {
+          _isAuthenticated = true;
+        });
+        _loadSafeFiles();
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Incorrect PIN')),
+        );
+      }
+    } catch (e) {
+      debugPrint('Error verifying PIN: $e');
+      if (mounted) {
+         ScaffoldMessenger.of(context).showSnackBar(
+           const SnackBar(content: Text('Error verifying PIN')),
+         );
+      }
     }
   }
 
   Future<void> _loadSafeFiles() async {
-    final provider = context.read<FileProvider>();
     // We'll use a hidden folder in the app's document directory or external storage
     // For simplicity, let's use a hidden folder in external storage if possible, or app doc dir.
     // Using external path allows partial recovery if app is uninstalled but creates visibility issues.
@@ -84,23 +113,14 @@ class _SafeFolderScreenState extends State<SafeFolderScreen> {
     final appDir = await Directory('/storage/emulated/0/.safe_folder').create(recursive: true);
     final files = appDir.listSync();
     
-    setState(() {
-      _safeFiles = files
-          .whereType<File>()
-          .map((e) => FileEntity.fromEntity(e))
-          .toList();
-    });
-  }
-
-  Future<void> _moveToSafeFolder(FileEntity file) async {
-    final safeDir = Directory('/storage/emulated/0/.safe_folder');
-    if (!safeDir.existsSync()) {
-      await safeDir.create();
+    if (mounted) {
+      setState(() {
+        _safeFiles = files
+            .whereType<File>()
+            .map((e) => FileEntity.fromEntity(e))
+            .toList();
+      });
     }
-    
-    final newPath = p.join(safeDir.path, file.name);
-    await file.entity.rename(newPath);
-    _loadSafeFiles();
   }
   
   Future<void> _removeFromSafeFolder(FileEntity file) async {
@@ -178,7 +198,6 @@ class _SafeFolderScreenState extends State<SafeFolderScreen> {
               keyboardType: TextInputType.number,
               maxLength: 4,
               onChanged: (val) {
-                 _pin = val;
                  if (val.length == 4) {
                    // Move to confirm step in a real app,
                    // for simplicity here we just set it

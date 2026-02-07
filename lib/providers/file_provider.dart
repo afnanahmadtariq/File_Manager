@@ -112,27 +112,60 @@ class FileProvider with ChangeNotifier {
       ));
     }
 
-    // Try to find SD Card
-    final storageDir = Directory('/storage');
-    if (storageDir.existsSync()) {
-      try {
-        final List<FileSystemEntity> mounts = storageDir.listSync();
-        for (var mount in mounts) {
-          if (mount is Directory) {
-            final name = p.basename(mount.path);
-            if (name != 'emulated' && name != 'self') {
-              _storageLocations.add(StorageLocation(
-                name: 'SD Card',
-                path: mount.path,
-                iconType: IconType.sdCard,
-                isRemovable: true,
-              ));
-            }
+    // Try to find SD Card using path_provider and iterating external directories
+    try {
+      final List<Directory>? externalDirs = await getExternalStorageDirectories();
+      if (externalDirs != null) {
+        for (var dir in externalDirs) {
+          // Format is typically /storage/UUID/Android/data/com.app/files
+          final pathParts = dir.path.split('/');
+          if (pathParts.contains('Android')) {
+             final androidIndex = pathParts.indexOf('Android');
+             if (androidIndex > 2) {
+               final rootPath = pathParts.sublist(0, androidIndex).join('/');
+               // Check if this is not the internal storage
+               if (rootPath != internalPath && rootPath != '/storage/emulated/0') {
+                  // Avoid duplicates
+                  if (!_storageLocations.any((l) => l.path == rootPath)) {
+                    _storageLocations.add(StorageLocation(
+                      name: 'SD Card',
+                      path: rootPath,
+                      iconType: IconType.sdCard,
+                      isRemovable: true,
+                    ));
+                  }
+               }
+             }
           }
         }
-      } catch (e) {
-        debugPrint('Error scanning storage mounts: $e');
       }
+    } catch (e) {
+      debugPrint('Error resolving external storage: $e');
+    }
+    
+    // Fallback: Check /storage if strictly needed/allowed, but fail silently
+    if (_storageLocations.length == 1) { // Only internal found so far
+       try {
+         final storageDir = Directory('/storage');
+         if (storageDir.existsSync()) {
+            final mounts = storageDir.listSync();
+            for (var mount in mounts) {
+               if (mount is Directory) {
+                 final name = p.basename(mount.path);
+                 if (name != 'emulated' && name != 'self' && RegExp(r'^[0-9A-F]{4}-[0-9A-F]{4}$').hasMatch(name)) {
+                    _storageLocations.add(StorageLocation(
+                      name: 'SD Card ($name)',
+                      path: mount.path,
+                      iconType: IconType.sdCard,
+                      isRemovable: true,
+                    ));
+                 }
+               }
+            }
+         }
+       } catch (e) {
+         // Silently ignore permission errors here as recent Android blocks /storage listing
+       }
     }
 
     // Common folders
