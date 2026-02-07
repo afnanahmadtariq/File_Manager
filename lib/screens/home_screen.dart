@@ -95,7 +95,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       ),
       drawer: isWideScreen ? null : Drawer(
         backgroundColor: Colors.transparent,
-        child: const Sidebar(),
+        child: Sidebar(
+          onLocationSelected: () => Navigator.pop(context),
+        ),
       ),
     );
   }
@@ -232,16 +234,16 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   color: Color(0xFF1A1E2E),
                 ),
               ),
-              TextButton(
-                onPressed: () {},
-                child: Text(
-                  'See All',
-                  style: TextStyle(
-                    color: Colors.grey[600],
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ),
+              // TextButton(
+              //   onPressed: () {},
+              //   child: Text(
+              //     'See All',
+              //     style: TextStyle(
+              //       color: Colors.grey[600],
+              //       fontWeight: FontWeight.w500,
+              //     ),
+              //   ),
+              // ),
             ],
           ),
           const SizedBox(height: 16),
