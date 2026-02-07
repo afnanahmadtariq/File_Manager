@@ -1,8 +1,8 @@
 name: Release Management
 
 permissions:
-  contents: write 
-  packages: read 
+  contents: write
+  packages: read
 
 on:
   push:
@@ -17,7 +17,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
         with:
-          fetch-depth: 0  # Needed to get commit messages
+          fetch-depth: 0 # Needed to get commit messages
 
       - name: Get commit message
         id: commit_message
@@ -64,8 +64,8 @@ jobs:
         if: steps.version_check.outputs.HAS_VERSION == 'true'
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.x'
-          channel: 'stable'
+          flutter-version: "3.x"
+          channel: "stable"
 
       - name: Install dependencies
         if: steps.version_check.outputs.HAS_VERSION == 'true'
@@ -73,7 +73,7 @@ jobs:
 
       - name: Build APK
         if: steps.version_check.outputs.HAS_VERSION == 'true'
-        run: flutter build apk --release --dart-define=API_BASE_URL=${{ secrets.API_BASE_URL }}
+        run: flutter build apk --release
 
       # - name: Build Web
       #   if: steps.version_check.outputs.HAS_VERSION == 'true'
@@ -88,7 +88,7 @@ jobs:
           RELEASES=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
             "https://api.github.com/repos/${{ github.repository }}/releases" | \
             jq -r '.[] | select(.tag_name | startswith("v'$MAJOR_VERSION'.")) | .id')
-          
+
           if [ -n "$RELEASES" ]; then
             echo "HAS_EXISTING_MAJOR=true" >> $GITHUB_OUTPUT
           else
@@ -103,7 +103,7 @@ jobs:
           RELEASES=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
             "https://api.github.com/repos/${{ github.repository }}/releases" | \
             jq -r '.[] | select(.tag_name | startswith("v'$MAJOR_VERSION'.")) | .id')
-          
+
           for RELEASE_ID in $RELEASES; do
             curl -X DELETE -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
               "https://api.github.com/repos/${{ github.repository }}/releases/$RELEASE_ID"
@@ -118,11 +118,10 @@ jobs:
           name: Release ${{ steps.version_check.outputs.VERSION }}
           body: |
             ${{ steps.version_check.outputs.MAJOR_VERSION == '1' && '🎉 Initial Release' || '🚀 New Release' }}
-            
+
             ## What's New
             - ${{ steps.commit_message.outputs.COMMIT_MSG }}
           files: |
             build/app/outputs/flutter-apk/app-release.apk
-            build/web/**/*
           draft: false
           prerelease: false
