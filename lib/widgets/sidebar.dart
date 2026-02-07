@@ -45,6 +45,25 @@ class _SidebarState extends State<Sidebar> {
     return const Color(0xFF6366F1); // Default purple/indigo
   }
 
+  void _navigateToLocation(StorageLocation location) {
+    // First close the drawer if we're in drawer mode
+    widget.onLocationSelected?.call();
+    
+    // Use a slight delay to ensure drawer closes first, then navigate
+    Future.microtask(() {
+      if (mounted) {
+        Navigator.of(context, rootNavigator: true).push(
+          MaterialPageRoute(
+            builder: (_) => StorageScreen(
+              path: location.path,
+              title: location.name,
+            ),
+          ),
+        );
+      }
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<FileProvider>();
@@ -66,7 +85,7 @@ class _SidebarState extends State<Sidebar> {
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.3),
+            color: Colors.black.withValues(alpha: 0.3),
             blurRadius: 20,
             offset: const Offset(4, 0),
           ),
@@ -90,7 +109,7 @@ class _SidebarState extends State<Sidebar> {
                       borderRadius: BorderRadius.circular(12),
                       boxShadow: [
                         BoxShadow(
-                          color: const Color(0xFF6366F1).withOpacity(0.4),
+                          color: const Color(0xFF6366F1).withValues(alpha: 0.4),
                           blurRadius: 12,
                           offset: const Offset(0, 4),
                         ),
@@ -123,9 +142,9 @@ class _SidebarState extends State<Sidebar> {
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: [
-                    Colors.white.withOpacity(0.0),
-                    Colors.white.withOpacity(0.1),
-                    Colors.white.withOpacity(0.0),
+                    Colors.white.withValues(alpha: 0.0),
+                    Colors.white.withValues(alpha: 0.1),
+                    Colors.white.withValues(alpha: 0.0),
                   ],
                 ),
               ),
@@ -141,7 +160,7 @@ class _SidebarState extends State<Sidebar> {
                 style: TextStyle(
                   fontSize: 11,
                   fontWeight: FontWeight.w600,
-                  color: Colors.white.withOpacity(0.4),
+                  color: Colors.white.withValues(alpha: 0.4),
                   letterSpacing: 1.5,
                 ),
               ),
@@ -163,7 +182,7 @@ class _SidebarState extends State<Sidebar> {
                 style: TextStyle(
                   fontSize: 11,
                   fontWeight: FontWeight.w600,
-                  color: Colors.white.withOpacity(0.4),
+                  color: Colors.white.withValues(alpha: 0.4),
                   letterSpacing: 1.5,
                 ),
               ),
@@ -188,10 +207,10 @@ class _SidebarState extends State<Sidebar> {
               margin: const EdgeInsets.all(16),
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.05),
+                color: Colors.white.withValues(alpha: 0.05),
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(
-                  color: Colors.white.withOpacity(0.08),
+                  color: Colors.white.withValues(alpha: 0.08),
                 ),
               ),
               child: _isLoadingStorage 
@@ -205,7 +224,7 @@ class _SidebarState extends State<Sidebar> {
                       Text(
                         'Storage Used',
                         style: TextStyle(
-                          color: Colors.white.withOpacity(0.6),
+                          color: Colors.white.withValues(alpha: 0.6),
                           fontSize: 12,
                           fontWeight: FontWeight.w500,
                         ),
@@ -213,7 +232,7 @@ class _SidebarState extends State<Sidebar> {
                       Text(
                         '${(usedPercentage * 100).toStringAsFixed(0)}%',
                         style: TextStyle(
-                          color: _getProgressBarColor(usedPercentage).withOpacity(0.9),
+                          color: _getProgressBarColor(usedPercentage).withValues(alpha: 0.9),
                           fontSize: 12,
                           fontWeight: FontWeight.bold,
                         ),
@@ -225,7 +244,7 @@ class _SidebarState extends State<Sidebar> {
                     borderRadius: BorderRadius.circular(4),
                     child: LinearProgressIndicator(
                       value: usedPercentage,
-                      backgroundColor: Colors.white.withOpacity(0.1),
+                      backgroundColor: Colors.white.withValues(alpha: 0.1),
                       valueColor: AlwaysStoppedAnimation<Color>(_getProgressBarColor(usedPercentage)),
                       minHeight: 6,
                     ),
@@ -234,7 +253,7 @@ class _SidebarState extends State<Sidebar> {
                   Text(
                     '${_formatSize(_storageInfo['used']!)} / ${_formatSize(_storageInfo['total']!)}',
                     style: TextStyle(
-                      color: Colors.white.withOpacity(0.4),
+                      color: Colors.white.withValues(alpha: 0.4),
                       fontSize: 11,
                     ),
                   ),
@@ -253,26 +272,15 @@ class _SidebarState extends State<Sidebar> {
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => StorageScreen(
-                  path: location.path,
-                  title: location.name,
-                ),
-              ),
-            );
-            widget.onLocationSelected?.call();
-          },
+          onTap: () => _navigateToLocation(location),
           borderRadius: BorderRadius.circular(12),
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.03),
+              color: Colors.white.withValues(alpha: 0.03),
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
-                color: Colors.white.withOpacity(0.05),
+                color: Colors.white.withValues(alpha: 0.05),
               ),
             ),
             child: Row(
@@ -286,7 +294,7 @@ class _SidebarState extends State<Sidebar> {
                     borderRadius: BorderRadius.circular(10),
                     boxShadow: [
                       BoxShadow(
-                        color: _getGradientForIcon(location.iconType)[0].withOpacity(0.3),
+                        color: _getGradientForIcon(location.iconType)[0].withValues(alpha: 0.3),
                         blurRadius: 8,
                         offset: const Offset(0, 2),
                       ),
@@ -315,7 +323,7 @@ class _SidebarState extends State<Sidebar> {
                         Text(
                           location.isRemovable ? 'Removable' : 'Internal',
                           style: TextStyle(
-                            color: Colors.white.withOpacity(0.4),
+                            color: Colors.white.withValues(alpha: 0.4),
                             fontSize: 11,
                           ),
                         ),
@@ -324,7 +332,7 @@ class _SidebarState extends State<Sidebar> {
                 ),
                 Icon(
                   Icons.chevron_right_rounded,
-                  color: Colors.white.withOpacity(0.3),
+                  color: Colors.white.withValues(alpha: 0.3),
                   size: 20,
                 ),
               ],
@@ -341,18 +349,7 @@ class _SidebarState extends State<Sidebar> {
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => StorageScreen(
-                  path: location.path,
-                  title: location.name,
-                ),
-              ),
-            );
-            widget.onLocationSelected?.call();
-          },
+          onTap: () => _navigateToLocation(location),
           borderRadius: BorderRadius.circular(10),
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
@@ -361,7 +358,7 @@ class _SidebarState extends State<Sidebar> {
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: _getColorForIcon(location.iconType).withOpacity(0.15),
+                    color: _getColorForIcon(location.iconType).withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Icon(
@@ -375,7 +372,7 @@ class _SidebarState extends State<Sidebar> {
                   child: Text(
                     location.name,
                     style: TextStyle(
-                      color: Colors.white.withOpacity(0.8),
+                      color: Colors.white.withValues(alpha: 0.8),
                       fontSize: 13,
                       fontWeight: FontWeight.w500,
                     ),
@@ -446,7 +443,7 @@ class _SidebarState extends State<Sidebar> {
       case IconType.sdCard:
         return [const Color(0xFF10B981), const Color(0xFF34D399)];
       default:
-        return [_getColorForIcon(type), _getColorForIcon(type).withOpacity(0.8)];
+        return [_getColorForIcon(type), _getColorForIcon(type).withValues(alpha: 0.8)];
     }
   }
 }

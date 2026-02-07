@@ -52,12 +52,6 @@ class FileProvider with ChangeNotifier {
   // Loading state for deep scans
   bool _isScanning = false;
   bool get isScanning => _isScanning;
-  
-  int _scanProgress = 0;
-  int get scanProgress => _scanProgress;
-  
-  int _totalToScan = 0;
-  int get totalToScan => _totalToScan;
 
   // Debouncing mechanism for notifyListeners
   Timer? _debounceTimer;
@@ -206,21 +200,46 @@ class FileProvider with ChangeNotifier {
     notifyListeners();
   }
 
+  /// Isolate-friendly directory listing that returns file paths with metadata
+  static List<Map<String, dynamic>> _listDirectorySync(String path) {
+    final List<Map<String, dynamic>> results = [];
+    try {
+      final dir = Directory(path);
+      final entities = dir.listSync();
+      for (var entity in entities) {
+        results.add({
+          'path': entity.path,
+          'isDirectory': entity is Directory,
+        });
+      }
+    } catch (e) {
+      // Permission denied or other error
+    }
+    return results;
+  }
+
   Future<void> loadFiles(String path) async {
     _currentPath = path;
     _categoryFilter = '';
     _selectedEntities.clear();
     try {
-      final dir = Directory(path);
-      final List<FileEntity> files = [];
+      // Use compute for background processing
+      final entityData = await compute(_listDirectorySync, path);
       
-      // Use streaming approach instead of blocking toList()
-      await for (var entity in dir.list()) {
-        files.add(FileEntity.fromEntity(entity));
-        
-        // Yield control back to UI thread periodically
-        if (files.length % 50 == 0) {
-          await Future.delayed(Duration.zero);
+      final List<FileEntity> files = [];
+      for (var data in entityData) {
+        try {
+          final entityPath = data['path'] as String;
+          final isDir = data['isDirectory'] as bool;
+          final entity = isDir ? Directory(entityPath) : File(entityPath);
+          files.add(FileEntity.fromEntity(entity));
+          
+          // Yield control periodically to prevent UI jank
+          if (files.length % 50 == 0) {
+            await Future.delayed(Duration.zero);
+          }
+        } catch (e) {
+          // Skip inaccessible files
         }
       }
       
@@ -304,7 +323,6 @@ class FileProvider with ChangeNotifier {
     }
 
     _isScanning = true;
-    _scanProgress = 0;
     _allFiles = [];
     _debouncedNotify(); // Notify immediately when scan starts
 
@@ -317,11 +335,38 @@ class FileProvider with ChangeNotifier {
       }
     }
 
-    final List<FileEntity> foundFiles = [];
     final extensions = _getExtensionsForCategory(category);
+    final List<String> allFilePaths = [];
 
+    // Use compute to run heavy scanning in background isolate
     for (var rootPath in rootPaths) {
-      await _recursiveScan(Directory(rootPath), extensions, foundFiles);
+      try {
+        final paths = await compute(_scanDirectorySync, {
+          'rootPath': rootPath,
+          'extensions': extensions,
+        });
+        allFilePaths.addAll(paths);
+      } catch (e) {
+        debugPrint('Error scanning $rootPath: $e');
+      }
+    }
+
+    // Convert paths to FileEntity objects on main thread (lighter operation)
+    final List<FileEntity> foundFiles = [];
+    for (var path in allFilePaths) {
+      try {
+        final file = File(path);
+        if (await file.exists()) {
+          foundFiles.add(FileEntity.fromEntity(file));
+        }
+        // Yield control periodically to prevent UI jank
+        if (foundFiles.length % 100 == 0) {
+          await Future.delayed(Duration.zero);
+          _debouncedNotify();
+        }
+      } catch (e) {
+        // Skip files that can't be accessed
+      }
     }
 
     _allFiles = foundFiles;
@@ -376,57 +421,41 @@ class FileProvider with ChangeNotifier {
     }
   }
 
-  Future<void> _recursiveScan(Directory dir, List<String> extensions, List<FileEntity> results) async {
-    try {
-      // Skip hidden directories and Android system directories
-      final dirName = p.basename(dir.path);
-      if (dirName.startsWith('.') || 
-          dirName == 'Android' ||
-          dirName == 'cache' ||
-          dirName == 'thumbnails') {
-        return;
-      }
-
-      final List<FileSystemEntity> entities = [];
-      
-      // Use streaming approach to avoid blocking
-      await for (var entity in dir.list()) {
-        entities.add(entity);
-        
-        // Yield control periodically during listing
-        if (entities.length % 100 == 0) {
-          await Future.delayed(Duration.zero);
-        }
-      }
-      
-      _totalToScan = entities.length;
-      _scanProgress = 0;
-
-      for (var entity in entities) {
-        _scanProgress++;
-        
-        // Debounced notify - only update UI every 100ms max
-        if (_scanProgress % 50 == 0) {
-          _debouncedNotify();
-        }
-        
-        // Yield control back to UI thread periodically
-        if (_scanProgress % 20 == 0) {
-          await Future.delayed(Duration.zero);
+  /// Isolate-friendly recursive scan that returns just file paths
+  static List<String> _scanDirectorySync(Map<String, dynamic> params) {
+    final String rootPath = params['rootPath'];
+    final List<String> extensions = List<String>.from(params['extensions']);
+    final List<String> results = [];
+    
+    void scan(Directory dir) {
+      try {
+        final dirName = p.basename(dir.path);
+        // Skip hidden directories and Android system directories
+        if (dirName.startsWith('.') || 
+            dirName == 'Android' ||
+            dirName == 'cache' ||
+            dirName == 'thumbnails') {
+          return;
         }
 
-        if (entity is Directory) {
-          await _recursiveScan(entity, extensions, results);
-        } else if (entity is File) {
-          final ext = p.extension(entity.path).replaceAll('.', '').toLowerCase();
-          if (extensions.isEmpty || extensions.contains(ext)) {
-            results.add(FileEntity.fromEntity(entity));
+        final entities = dir.listSync();
+        for (var entity in entities) {
+          if (entity is Directory) {
+            scan(entity);
+          } else if (entity is File) {
+            final ext = p.extension(entity.path).replaceAll('.', '').toLowerCase();
+            if (extensions.isEmpty || extensions.contains(ext)) {
+              results.add(entity.path);
+            }
           }
         }
+      } catch (e) {
+        // Permission denied or other error, skip this directory
       }
-    } catch (e) {
-      // Permission denied or other error, skip this directory
     }
+    
+    scan(Directory(rootPath));
+    return results;
   }
 
   /// Refresh the cached index for a category
