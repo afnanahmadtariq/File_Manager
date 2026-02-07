@@ -87,7 +87,7 @@ class _StorageScreenState extends State<StorageScreen> with SingleTickerProvider
                     borderRadius: BorderRadius.circular(10),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.05),
+                        color: Colors.black.withValues(alpha: 0.05),
                         blurRadius: 10,
                       ),
                     ],
@@ -123,7 +123,7 @@ class _StorageScreenState extends State<StorageScreen> with SingleTickerProvider
               margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: const Color(0xFF6366F1).withOpacity(0.1),
+                color: const Color(0xFF6366F1).withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Row(
@@ -211,7 +211,7 @@ class _StorageScreenState extends State<StorageScreen> with SingleTickerProvider
         Container(
           margin: const EdgeInsets.only(right: 8),
           decoration: BoxDecoration(
-            color: const Color(0xFF10B981).withOpacity(0.1),
+            color: const Color(0xFF10B981).withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(10),
           ),
           child: IconButton(
@@ -227,7 +227,7 @@ class _StorageScreenState extends State<StorageScreen> with SingleTickerProvider
           borderRadius: BorderRadius.circular(10),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.05),
+              color: Colors.black.withValues(alpha: 0.05),
               blurRadius: 10,
             ),
           ],
@@ -247,7 +247,7 @@ class _StorageScreenState extends State<StorageScreen> with SingleTickerProvider
           borderRadius: BorderRadius.circular(10),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.05),
+              color: Colors.black.withValues(alpha: 0.05),
               blurRadius: 10,
             ),
           ],
@@ -300,7 +300,7 @@ class _StorageScreenState extends State<StorageScreen> with SingleTickerProvider
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
-                color: const Color(0xFF6366F1).withOpacity(0.1),
+                color: const Color(0xFF6366F1).withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(20),
               ),
               child: Row(
@@ -340,7 +340,7 @@ class _StorageScreenState extends State<StorageScreen> with SingleTickerProvider
               borderRadius: BorderRadius.circular(14),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.04),
+                  color: Colors.black.withValues(alpha: 0.04),
                   blurRadius: 12,
                   offset: const Offset(0, 2),
                 ),
@@ -377,13 +377,13 @@ class _StorageScreenState extends State<StorageScreen> with SingleTickerProvider
           Container(
             padding: const EdgeInsets.all(24),
             decoration: BoxDecoration(
-              color: const Color(0xFF6366F1).withOpacity(0.1),
+              color: const Color(0xFF6366F1).withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(24),
             ),
             child: Icon(
               Icons.folder_open_rounded,
               size: 64,
-              color: const Color(0xFF6366F1).withOpacity(0.5),
+              color: const Color(0xFF6366F1).withValues(alpha: 0.5),
             ),
           ),
           const SizedBox(height: 20),
@@ -446,7 +446,7 @@ class _StorageScreenState extends State<StorageScreen> with SingleTickerProvider
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             color: isSelected 
-                ? const Color(0xFF6366F1).withOpacity(0.08)
+                ? const Color(0xFF6366F1).withValues(alpha: 0.08)
                 : Colors.white,
             borderRadius: BorderRadius.circular(20),
             border: isSelected
@@ -455,8 +455,8 @@ class _StorageScreenState extends State<StorageScreen> with SingleTickerProvider
             boxShadow: [
               BoxShadow(
                 color: isSelected
-                    ? const Color(0xFF6366F1).withOpacity(0.15)
-                    : Colors.black.withOpacity(0.04),
+                    ? const Color(0xFF6366F1).withValues(alpha: 0.15)
+                    : Colors.black.withValues(alpha: 0.04),
                 blurRadius: isSelected ? 16 : 12,
                 offset: const Offset(0, 4),
               ),
@@ -473,7 +473,7 @@ class _StorageScreenState extends State<StorageScreen> with SingleTickerProvider
                       Container(
                         padding: const EdgeInsets.all(10),
                         decoration: BoxDecoration(
-                          color: _getIconColor(entity).withOpacity(0.1),
+                          color: _getIconColor(entity).withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Icon(
@@ -563,7 +563,7 @@ class _StorageScreenState extends State<StorageScreen> with SingleTickerProvider
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
               color: isSelected
-                  ? const Color(0xFF6366F1).withOpacity(0.08)
+                  ? const Color(0xFF6366F1).withValues(alpha: 0.08)
                   : Colors.white,
               borderRadius: BorderRadius.circular(16),
               border: isSelected
@@ -571,7 +571,7 @@ class _StorageScreenState extends State<StorageScreen> with SingleTickerProvider
                   : null,
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.03),
+                  color: Colors.black.withValues(alpha: 0.03),
                   blurRadius: 10,
                   offset: const Offset(0, 2),
                 ),
@@ -584,7 +584,7 @@ class _StorageScreenState extends State<StorageScreen> with SingleTickerProvider
                     Container(
                       padding: const EdgeInsets.all(10),
                       decoration: BoxDecoration(
-                        color: _getIconColor(entity).withOpacity(0.1),
+                        color: _getIconColor(entity).withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Icon(
@@ -650,7 +650,7 @@ class _StorageScreenState extends State<StorageScreen> with SingleTickerProvider
 
   Widget _buildMoreMenu(FileEntity entity, FileProvider provider) {
     return PopupMenuButton<String>(
-      onSelected: (value) {
+      onSelected: (value) async {
         switch (value) {
           case 'delete':
             _showDeleteConfirm(context, entity, provider);
@@ -685,6 +685,22 @@ class _StorageScreenState extends State<StorageScreen> with SingleTickerProvider
               Share.shareXFiles([XFile(entity.path)]);
             }
             break;
+          case 'safe':
+            try {
+              await provider.moveToSafeFolder(entity);
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Moved to Safe Folder')),
+                );
+              }
+            } catch (e) {
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Failed to move file')),
+                );
+              }
+            }
+            break;
         }
       },
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -696,6 +712,7 @@ class _StorageScreenState extends State<StorageScreen> with SingleTickerProvider
         _buildPopupMenuItem('delete', 'Delete', Icons.delete_outline_rounded, isDestructive: true),
         if (!entity.isDirectory)
           _buildPopupMenuItem('share', 'Share', Icons.share_rounded),
+        _buildPopupMenuItem('safe', 'Move to Safe Folder', Icons.lock_outline_rounded),
       ],
       icon: Icon(Icons.more_vert_rounded, color: Colors.grey[400], size: 20),
     );

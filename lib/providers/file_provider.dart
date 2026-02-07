@@ -503,6 +503,22 @@ class FileProvider with ChangeNotifier {
     await OpenFilex.open(path);
   }
 
+  Future<void> moveToSafeFolder(FileEntity entity) async {
+    try {
+      final safeDir = Directory('/storage/emulated/0/.safe_folder');
+      if (!safeDir.existsSync()) {
+        await safeDir.create(recursive: true);
+      }
+      
+      final newPath = p.join(safeDir.path, entity.name);
+      await entity.entity.rename(newPath);
+      await loadFiles(_currentPath);
+    } catch (e) {
+      debugPrint("Error moving to safe folder: $e");
+      rethrow;
+    }
+  }
+
   /// Get storage info for a path
   Future<Map<String, int>> getStorageInfo(String path) async {
     // This is a simplified version - actual implementation would use platform channels

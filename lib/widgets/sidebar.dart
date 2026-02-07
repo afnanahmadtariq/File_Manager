@@ -27,7 +27,7 @@ class Sidebar extends StatelessWidget {
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.3),
+            color: Colors.black.withValues(alpha: 0.3),
             blurRadius: 20,
             offset: const Offset(4, 0),
           ),
@@ -51,7 +51,7 @@ class Sidebar extends StatelessWidget {
                       borderRadius: BorderRadius.circular(12),
                       boxShadow: [
                         BoxShadow(
-                          color: const Color(0xFF6366F1).withOpacity(0.4),
+                          color: const Color(0xFF6366F1).withValues(alpha: 0.4),
                           blurRadius: 12,
                           offset: const Offset(0, 4),
                         ),
@@ -84,9 +84,9 @@ class Sidebar extends StatelessWidget {
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: [
-                    Colors.white.withOpacity(0.0),
-                    Colors.white.withOpacity(0.1),
-                    Colors.white.withOpacity(0.0),
+                    Colors.white.withValues(alpha: 0.0),
+                    Colors.white.withValues(alpha: 0.1),
+                    Colors.white.withValues(alpha: 0.0),
                   ],
                 ),
               ),
@@ -102,7 +102,7 @@ class Sidebar extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 11,
                   fontWeight: FontWeight.w600,
-                  color: Colors.white.withOpacity(0.4),
+                  color: Colors.white.withValues(alpha: 0.4),
                   letterSpacing: 1.5,
                 ),
               ),
@@ -124,7 +124,7 @@ class Sidebar extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 11,
                   fontWeight: FontWeight.w600,
-                  color: Colors.white.withOpacity(0.4),
+                  color: Colors.white.withValues(alpha: 0.4),
                   letterSpacing: 1.5,
                 ),
               ),
@@ -149,10 +149,10 @@ class Sidebar extends StatelessWidget {
               margin: const EdgeInsets.all(16),
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.05),
+                color: Colors.white.withValues(alpha: 0.05),
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(
-                  color: Colors.white.withOpacity(0.08),
+                  color: Colors.white.withValues(alpha: 0.08),
                 ),
               ),
               child: Column(
@@ -164,7 +164,7 @@ class Sidebar extends StatelessWidget {
                       Text(
                         'Storage Used',
                         style: TextStyle(
-                          color: Colors.white.withOpacity(0.6),
+                          color: Colors.white.withValues(alpha: 0.6),
                           fontSize: 12,
                           fontWeight: FontWeight.w500,
                         ),
@@ -172,7 +172,7 @@ class Sidebar extends StatelessWidget {
                       Text(
                         '75%',
                         style: TextStyle(
-                          color: Colors.white.withOpacity(0.9),
+                          color: Colors.white.withValues(alpha: 0.9),
                           fontSize: 12,
                           fontWeight: FontWeight.bold,
                         ),
@@ -184,7 +184,7 @@ class Sidebar extends StatelessWidget {
                     borderRadius: BorderRadius.circular(4),
                     child: LinearProgressIndicator(
                       value: 0.75,
-                      backgroundColor: Colors.white.withOpacity(0.1),
+                      backgroundColor: Colors.white.withValues(alpha: 0.1),
                       valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF6366F1)),
                       minHeight: 6,
                     ),
@@ -193,7 +193,7 @@ class Sidebar extends StatelessWidget {
                   Text(
                     '96 GB / 128 GB',
                     style: TextStyle(
-                      color: Colors.white.withOpacity(0.4),
+                      color: Colors.white.withValues(alpha: 0.4),
                       fontSize: 11,
                     ),
                   ),
@@ -228,10 +228,10 @@ class Sidebar extends StatelessWidget {
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.03),
+              color: Colors.white.withValues(alpha: 0.03),
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
-                color: Colors.white.withOpacity(0.05),
+                color: Colors.white.withValues(alpha: 0.05),
               ),
             ),
             child: Row(
@@ -245,7 +245,7 @@ class Sidebar extends StatelessWidget {
                     borderRadius: BorderRadius.circular(10),
                     boxShadow: [
                       BoxShadow(
-                        color: _getGradientForIcon(location.iconType)[0].withOpacity(0.3),
+                        color: _getGradientForIcon(location.iconType)[0].withValues(alpha: 0.3),
                         blurRadius: 8,
                         offset: const Offset(0, 2),
                       ),
@@ -274,7 +274,7 @@ class Sidebar extends StatelessWidget {
                         Text(
                           location.isRemovable ? 'Removable' : 'Internal',
                           style: TextStyle(
-                            color: Colors.white.withOpacity(0.4),
+                            color: Colors.white.withValues(alpha: 0.4),
                             fontSize: 11,
                           ),
                         ),
@@ -283,7 +283,7 @@ class Sidebar extends StatelessWidget {
                 ),
                 Icon(
                   Icons.chevron_right_rounded,
-                  color: Colors.white.withOpacity(0.3),
+                  color: Colors.white.withValues(alpha: 0.3),
                   size: 20,
                 ),
               ],
@@ -320,7 +320,7 @@ class Sidebar extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: _getColorForIcon(location.iconType).withOpacity(0.15),
+                    color: _getColorForIcon(location.iconType).withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Icon(
@@ -334,7 +334,7 @@ class Sidebar extends StatelessWidget {
                   child: Text(
                     location.name,
                     style: TextStyle(
-                      color: Colors.white.withOpacity(0.8),
+                      color: Colors.white.withValues(alpha: 0.8),
                       fontSize: 13,
                       fontWeight: FontWeight.w500,
                     ),
@@ -405,7 +405,7 @@ class Sidebar extends StatelessWidget {
       case IconType.sdCard:
         return [const Color(0xFF10B981), const Color(0xFF34D399)];
       default:
-        return [_getColorForIcon(type), _getColorForIcon(type).withOpacity(0.8)];
+        return [_getColorForIcon(type), _getColorForIcon(type).withValues(alpha: 0.8)];
     }
   }
 }
