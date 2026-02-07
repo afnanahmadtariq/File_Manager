@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -9,6 +10,7 @@ import '../models/file_index.dart';
 import '../models/storage_location.dart';
 import 'package:path/path.dart' as p;
 import 'package:open_filex/open_filex.dart';
+import 'package:disk_space_plus/disk_space_plus.dart';
 
 enum SortOption { name, size, date, type }
 
@@ -56,6 +58,17 @@ class FileProvider with ChangeNotifier {
   
   int _totalToScan = 0;
   int get totalToScan => _totalToScan;
+
+  // Debouncing mechanism for notifyListeners
+  Timer? _debounceTimer;
+  DateTime _lastNotify = DateTime.now();
+
+  /// Clean up resources
+  @override
+  void dispose() {
+    _debounceTimer?.cancel();
+    super.dispose();
+  }
 
   void toggleView() {
     _isGridView = !_isGridView;
@@ -199,8 +212,19 @@ class FileProvider with ChangeNotifier {
     _selectedEntities.clear();
     try {
       final dir = Directory(path);
-      final List<FileSystemEntity> entities = await dir.list().toList();
-      _allFiles = entities.map((e) => FileEntity.fromEntity(e)).toList();
+      final List<FileEntity> files = [];
+      
+      // Use streaming approach instead of blocking toList()
+      await for (var entity in dir.list()) {
+        files.add(FileEntity.fromEntity(entity));
+        
+        // Yield control back to UI thread periodically
+        if (files.length % 50 == 0) {
+          await Future.delayed(Duration.zero);
+        }
+      }
+      
+      _allFiles = files;
       _applyFilterAndSort();
     } catch (e) {
       debugPrint("Error loading files: $e");
@@ -213,18 +237,27 @@ class FileProvider with ChangeNotifier {
     try {
       final dir = Directory('/storage/emulated/0/Download');
       if (await dir.exists()) {
-        final List<FileSystemEntity> entities = await dir.list().toList();
-        _recentFiles = entities
-            .whereType<File>()
-            .map((e) => FileEntity.fromEntity(e))
-            .toList();
-        _recentFiles.sort((a, b) => b.modified.compareTo(a.modified));
-        _recentFiles = _recentFiles.take(10).toList();
+        final List<FileEntity> files = [];
+        
+        // Use streaming to avoid blocking
+        await for (var entity in dir.list()) {
+          if (entity is File) {
+            files.add(FileEntity.fromEntity(entity));
+          }
+          
+          // Yield control periodically
+          if (files.length % 50 == 0) {
+            await Future.delayed(Duration.zero);
+          }
+        }
+        
+        files.sort((a, b) => b.modified.compareTo(a.modified));
+        _recentFiles = files.take(10).toList();
       }
     } catch (e) {
       debugPrint("Error loading recent files: $e");
     }
-    notifyListeners();
+    _debouncedNotify();
   }
 
   /// Load cached indexes from SharedPreferences
@@ -273,7 +306,7 @@ class FileProvider with ChangeNotifier {
     _isScanning = true;
     _scanProgress = 0;
     _allFiles = [];
-    notifyListeners();
+    _debouncedNotify(); // Notify immediately when scan starts
 
     final List<String> rootPaths = ['/storage/emulated/0'];
     
@@ -354,14 +387,32 @@ class FileProvider with ChangeNotifier {
         return;
       }
 
-      final entities = await dir.list().toList();
+      final List<FileSystemEntity> entities = [];
+      
+      // Use streaming approach to avoid blocking
+      await for (var entity in dir.list()) {
+        entities.add(entity);
+        
+        // Yield control periodically during listing
+        if (entities.length % 100 == 0) {
+          await Future.delayed(Duration.zero);
+        }
+      }
+      
       _totalToScan = entities.length;
       _scanProgress = 0;
 
       for (var entity in entities) {
         _scanProgress++;
+        
+        // Debounced notify - only update UI every 100ms max
         if (_scanProgress % 50 == 0) {
-          notifyListeners();
+          _debouncedNotify();
+        }
+        
+        // Yield control back to UI thread periodically
+        if (_scanProgress % 20 == 0) {
+          await Future.delayed(Duration.zero);
         }
 
         if (entity is Directory) {
@@ -428,7 +479,26 @@ class FileProvider with ChangeNotifier {
       }
       return _isAscending ? comparison : -comparison;
     });
-    notifyListeners();
+    _debouncedNotify();
+  }
+
+  /// Debounced notifyListeners to prevent excessive UI updates
+  void _debouncedNotify() {
+    final now = DateTime.now();
+    final diff = now.difference(_lastNotify).inMilliseconds;
+    
+    // If last notify was less than 100ms ago, schedule it
+    if (diff < 100) {
+      _debounceTimer?.cancel();
+      _debounceTimer = Timer(Duration(milliseconds: 100 - diff), () {
+        _lastNotify = DateTime.now();
+        notifyListeners();
+      });
+    } else {
+      // Otherwise notify immediately
+      _lastNotify = now;
+      notifyListeners();
+    }
   }
 
   void setSearchQuery(String query) {
@@ -554,10 +624,28 @@ class FileProvider with ChangeNotifier {
 
   /// Get storage info for a path
   Future<Map<String, int>> getStorageInfo(String path) async {
-    // This is a simplified version - actual implementation would use platform channels
-    return {
-      'total': 128 * 1024 * 1024 * 1024, // 128 GB placeholder
-      'used': 96 * 1024 * 1024 * 1024,   // 96 GB placeholder
-    };
+    try {
+      final diskSpace = DiskSpacePlus();
+      
+      final totalSpace = await diskSpace.getTotalDiskSpace;
+      final freeSpace = await diskSpace.getFreeDiskSpace;
+      
+      final totalBytes = totalSpace != null ? (totalSpace * 1024 * 1024).toInt() : 0;
+      final freeBytes = freeSpace != null ? (freeSpace * 1024 * 1024).toInt() : 0;
+      final usedBytes = totalBytes - freeBytes;
+      
+      return {
+        'total': totalBytes,
+        'used': usedBytes,
+        'free': freeBytes,
+      };
+    } catch (e) {
+      debugPrint('Error getting storage info: $e');
+      return {
+        'total': 0,
+        'used': 0,
+        'free': 0,
+      };
+    }
   }
 }
