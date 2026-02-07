@@ -4,15 +4,54 @@ import '../providers/file_provider.dart';
 import '../models/storage_location.dart';
 import '../screens/storage_screen.dart';
 
-class Sidebar extends StatelessWidget {
+class Sidebar extends StatefulWidget {
   final VoidCallback? onLocationSelected;
   
   const Sidebar({super.key, this.onLocationSelected});
 
   @override
+  State<Sidebar> createState() => _SidebarState();
+}
+
+class _SidebarState extends State<Sidebar> {
+  Map<String, int> _storageInfo = {'total': 0, 'used': 0, 'free': 0};
+  bool _isLoadingStorage = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadStorageInfo();
+  }
+
+  Future<void> _loadStorageInfo() async {
+    final provider = context.read<FileProvider>();
+    final info = await provider.getStorageInfo('/storage/emulated/0');
+    if (mounted) {
+      setState(() {
+        _storageInfo = info;
+        _isLoadingStorage = false;
+      });
+    }
+  }
+
+  String _formatSize(int bytes) {
+    if (bytes <= 0) return "0 GB";
+    return "${(bytes / (1024 * 1024 * 1024)).toStringAsFixed(1)} GB";
+  }
+
+  Color _getProgressBarColor(double percentage) {
+    if (percentage >= 0.9) return const Color(0xFFEF4444); // Red for >90%
+    if (percentage >= 0.75) return const Color(0xFFF59E0B); // Orange for >75%
+    return const Color(0xFF6366F1); // Default purple/indigo
+  }
+
+  @override
   Widget build(BuildContext context) {
     final provider = context.watch<FileProvider>();
     final locations = provider.storageLocations;
+    final usedPercentage = _storageInfo['total']! > 0 
+        ? _storageInfo['used']! / _storageInfo['total']! 
+        : 0.0;
 
     return Container(
       width: 280,
@@ -27,7 +66,7 @@ class Sidebar extends StatelessWidget {
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.3),
+            color: Colors.black.withOpacity(0.3),
             blurRadius: 20,
             offset: const Offset(4, 0),
           ),
@@ -51,7 +90,7 @@ class Sidebar extends StatelessWidget {
                       borderRadius: BorderRadius.circular(12),
                       boxShadow: [
                         BoxShadow(
-                          color: const Color(0xFF6366F1).withValues(alpha: 0.4),
+                          color: const Color(0xFF6366F1).withOpacity(0.4),
                           blurRadius: 12,
                           offset: const Offset(0, 4),
                         ),
@@ -84,9 +123,9 @@ class Sidebar extends StatelessWidget {
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: [
-                    Colors.white.withValues(alpha: 0.0),
-                    Colors.white.withValues(alpha: 0.1),
-                    Colors.white.withValues(alpha: 0.0),
+                    Colors.white.withOpacity(0.0),
+                    Colors.white.withOpacity(0.1),
+                    Colors.white.withOpacity(0.0),
                   ],
                 ),
               ),
@@ -102,7 +141,7 @@ class Sidebar extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 11,
                   fontWeight: FontWeight.w600,
-                  color: Colors.white.withValues(alpha: 0.4),
+                  color: Colors.white.withOpacity(0.4),
                   letterSpacing: 1.5,
                 ),
               ),
@@ -124,7 +163,7 @@ class Sidebar extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 11,
                   fontWeight: FontWeight.w600,
-                  color: Colors.white.withValues(alpha: 0.4),
+                  color: Colors.white.withOpacity(0.4),
                   letterSpacing: 1.5,
                 ),
               ),
@@ -149,13 +188,15 @@ class Sidebar extends StatelessWidget {
               margin: const EdgeInsets.all(16),
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.05),
+                color: Colors.white.withOpacity(0.05),
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(
-                  color: Colors.white.withValues(alpha: 0.08),
+                  color: Colors.white.withOpacity(0.08),
                 ),
               ),
-              child: Column(
+              child: _isLoadingStorage 
+                ? const Center(child: CircularProgressIndicator(strokeWidth: 2))
+                : Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
@@ -164,15 +205,15 @@ class Sidebar extends StatelessWidget {
                       Text(
                         'Storage Used',
                         style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.6),
+                          color: Colors.white.withOpacity(0.6),
                           fontSize: 12,
                           fontWeight: FontWeight.w500,
                         ),
                       ),
                       Text(
-                        '75%',
+                        '${(usedPercentage * 100).toStringAsFixed(0)}%',
                         style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.9),
+                          color: _getProgressBarColor(usedPercentage).withOpacity(0.9),
                           fontSize: 12,
                           fontWeight: FontWeight.bold,
                         ),
@@ -183,17 +224,17 @@ class Sidebar extends StatelessWidget {
                   ClipRRect(
                     borderRadius: BorderRadius.circular(4),
                     child: LinearProgressIndicator(
-                      value: 0.75,
-                      backgroundColor: Colors.white.withValues(alpha: 0.1),
-                      valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF6366F1)),
+                      value: usedPercentage,
+                      backgroundColor: Colors.white.withOpacity(0.1),
+                      valueColor: AlwaysStoppedAnimation<Color>(_getProgressBarColor(usedPercentage)),
                       minHeight: 6,
                     ),
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    '96 GB / 128 GB',
+                    '${_formatSize(_storageInfo['used']!)} / ${_formatSize(_storageInfo['total']!)}',
                     style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.4),
+                      color: Colors.white.withOpacity(0.4),
                       fontSize: 11,
                     ),
                   ),
@@ -222,16 +263,16 @@ class Sidebar extends StatelessWidget {
                 ),
               ),
             );
-            onLocationSelected?.call();
+            widget.onLocationSelected?.call();
           },
           borderRadius: BorderRadius.circular(12),
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.03),
+              color: Colors.white.withOpacity(0.03),
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
-                color: Colors.white.withValues(alpha: 0.05),
+                color: Colors.white.withOpacity(0.05),
               ),
             ),
             child: Row(
@@ -245,7 +286,7 @@ class Sidebar extends StatelessWidget {
                     borderRadius: BorderRadius.circular(10),
                     boxShadow: [
                       BoxShadow(
-                        color: _getGradientForIcon(location.iconType)[0].withValues(alpha: 0.3),
+                        color: _getGradientForIcon(location.iconType)[0].withOpacity(0.3),
                         blurRadius: 8,
                         offset: const Offset(0, 2),
                       ),
@@ -274,7 +315,7 @@ class Sidebar extends StatelessWidget {
                         Text(
                           location.isRemovable ? 'Removable' : 'Internal',
                           style: TextStyle(
-                            color: Colors.white.withValues(alpha: 0.4),
+                            color: Colors.white.withOpacity(0.4),
                             fontSize: 11,
                           ),
                         ),
@@ -283,7 +324,7 @@ class Sidebar extends StatelessWidget {
                 ),
                 Icon(
                   Icons.chevron_right_rounded,
-                  color: Colors.white.withValues(alpha: 0.3),
+                  color: Colors.white.withOpacity(0.3),
                   size: 20,
                 ),
               ],
@@ -310,7 +351,7 @@ class Sidebar extends StatelessWidget {
                 ),
               ),
             );
-            onLocationSelected?.call();
+            widget.onLocationSelected?.call();
           },
           borderRadius: BorderRadius.circular(10),
           child: Padding(
@@ -320,7 +361,7 @@ class Sidebar extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: _getColorForIcon(location.iconType).withValues(alpha: 0.15),
+                    color: _getColorForIcon(location.iconType).withOpacity(0.15),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Icon(
@@ -334,7 +375,7 @@ class Sidebar extends StatelessWidget {
                   child: Text(
                     location.name,
                     style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.8),
+                      color: Colors.white.withOpacity(0.8),
                       fontSize: 13,
                       fontWeight: FontWeight.w500,
                     ),
@@ -405,7 +446,7 @@ class Sidebar extends StatelessWidget {
       case IconType.sdCard:
         return [const Color(0xFF10B981), const Color(0xFF34D399)];
       default:
-        return [_getColorForIcon(type), _getColorForIcon(type).withValues(alpha: 0.8)];
+        return [_getColorForIcon(type), _getColorForIcon(type).withOpacity(0.8)];
     }
   }
 }

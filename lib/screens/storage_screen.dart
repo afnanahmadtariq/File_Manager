@@ -53,7 +53,10 @@ class _StorageScreenState extends State<StorageScreen> with SingleTickerProvider
         await provider.init();
       }
       
-      _animationController.forward();
+      // Check if widget is still mounted before starting animation
+      if (mounted) {
+        _animationController.forward();
+      }
     });
   }
 
