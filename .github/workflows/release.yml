@@ -1,0 +1,128 @@
+name: Release Management
+
+permissions:
+  contents: write 
+  packages: read 
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build_and_release:
+    name: Build and Release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0  # Needed to get commit messages
+
+      - name: Get commit message
+        id: commit_message
+        run: |
+          COMMIT_MSG=$(git log -1 --pretty=format:%s)
+          echo "COMMIT_MSG=$COMMIT_MSG" >> $GITHUB_OUTPUT
+          echo "Commit message: $COMMIT_MSG"
+
+      - name: Check for version in commit message
+        id: version_check
+        run: |
+          # Extract version using regex - match v1.2.3 pattern
+          if [[ "${{ steps.commit_message.outputs.COMMIT_MSG }}" =~ v([0-9]+)\.([0-9]+)\.([0-9]+) ]]; then
+            echo "HAS_VERSION=true" >> $GITHUB_OUTPUT
+            VERSION=${BASH_REMATCH[0]}
+            echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+            echo "MAJOR_VERSION=${BASH_REMATCH[1]}" >> $GITHUB_OUTPUT
+            echo "Found version: $VERSION"
+          else
+            echo "HAS_VERSION=false" >> $GITHUB_OUTPUT
+            echo "No version found in commit message"
+          fi
+
+      # Continue with the release process only if a version was found
+      - name: Create Git tag
+        if: steps.version_check.outputs.HAS_VERSION == 'true'
+        run: |
+          VERSION=${{ steps.version_check.outputs.VERSION }}
+          git tag $VERSION
+          git push origin $VERSION
+          echo "Created and pushed tag: $VERSION"
+
+      # Setup Java with Gradle caching
+      - name: Setup Java
+        if: steps.version_check.outputs.HAS_VERSION == 'true'
+        uses: actions/setup-java@v3
+        with:
+          distribution: "zulu"
+          java-version: "17"
+          cache: "gradle"
+
+      # Setup Flutter with SDK caching
+      - name: Setup Flutter
+        if: steps.version_check.outputs.HAS_VERSION == 'true'
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.x'
+          channel: 'stable'
+
+      - name: Install dependencies
+        if: steps.version_check.outputs.HAS_VERSION == 'true'
+        run: flutter pub get
+
+      - name: Build APK
+        if: steps.version_check.outputs.HAS_VERSION == 'true'
+        run: flutter build apk --release --dart-define=API_BASE_URL=${{ secrets.API_BASE_URL }}
+
+      # - name: Build Web
+      #   if: steps.version_check.outputs.HAS_VERSION == 'true'
+      #   run: flutter build web --release --dart-define=API_BASE_URL=${{ secrets.API_BASE_URL }}
+
+      # Find any existing releases with same major version
+      - name: Check existing releases
+        if: steps.version_check.outputs.HAS_VERSION == 'true'
+        id: check_releases
+        run: |
+          MAJOR_VERSION=${{ steps.version_check.outputs.MAJOR_VERSION }}
+          RELEASES=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            "https://api.github.com/repos/${{ github.repository }}/releases" | \
+            jq -r '.[] | select(.tag_name | startswith("v'$MAJOR_VERSION'.")) | .id')
+          
+          if [ -n "$RELEASES" ]; then
+            echo "HAS_EXISTING_MAJOR=true" >> $GITHUB_OUTPUT
+          else
+            echo "HAS_EXISTING_MAJOR=false" >> $GITHUB_OUTPUT
+          fi
+
+      # If this is a new minor/patch version for an existing major version, delete previous releases with same major
+      - name: Clean previous minor/patch releases
+        if: steps.version_check.outputs.HAS_VERSION == 'true' && steps.check_releases.outputs.HAS_EXISTING_MAJOR == 'true'
+        run: |
+          MAJOR_VERSION=${{ steps.version_check.outputs.MAJOR_VERSION }}
+          RELEASES=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            "https://api.github.com/repos/${{ github.repository }}/releases" | \
+            jq -r '.[] | select(.tag_name | startswith("v'$MAJOR_VERSION'.")) | .id')
+          
+          for RELEASE_ID in $RELEASES; do
+            curl -X DELETE -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+              "https://api.github.com/repos/${{ github.repository }}/releases/$RELEASE_ID"
+          done
+
+      # Create the new release
+      - name: Create Release
+        if: steps.version_check.outputs.HAS_VERSION == 'true'
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ steps.version_check.outputs.VERSION }}
+          name: Release ${{ steps.version_check.outputs.VERSION }}
+          body: |
+            ${{ steps.version_check.outputs.MAJOR_VERSION == '1' && '🎉 Initial Release' || '🚀 New Release' }}
+            
+            ## What's New
+            - ${{ steps.commit_message.outputs.COMMIT_MSG }}
+          files: |
+            build/app/outputs/flutter-apk/app-release.apk
+            build/web/**/*
+          draft: false
+          prerelease: false
